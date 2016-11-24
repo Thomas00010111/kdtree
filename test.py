@@ -9,6 +9,8 @@ import unittest
 import doctest
 import collections
 from itertools import islice
+import util
+import numpy
 
 try:
     import coverage
@@ -33,9 +35,9 @@ class RemoveTest(unittest.TestCase):
 
         random.shuffle(points)
         while points:
-            point = points.pop(0)
+            point1 = points.pop(0)
 
-            tree = tree.remove(point)
+            tree = tree.remove(point1)
 
             # Check if the Tree is valid after the removal
             self.assertTrue(tree.is_valid())
@@ -62,15 +64,15 @@ class RemoveTest(unittest.TestCase):
 
         random.shuffle(points)
         while points:
-            point = points.pop(0)
+            point1 = points.pop(0)
 
-            tree = tree.remove(point)
+            tree = tree.remove(point1)
 
             # Check if the Tree is valid after the removal
             self.assertTrue(tree.is_valid())
 
-            # Check if the point has actually been removed
-            self.assertTrue(point not in [n.data for n in tree.inorder()])
+            # Check if the point1 has actually been removed
+            self.assertTrue(point1 not in [n.data for n in tree.inorder()])
 
             # Check if the removal reduced the number of nodes by 1 (not more, not less)
             remaining_points = len(points)
@@ -96,13 +98,13 @@ class AddTest(unittest.TestCase):
 
         points = list(set(islice(random_points(), 0, num_points)))
         tree = kdtree.create(dimensions=len(points[0]))
-        for n, point in enumerate(points, 1):
+        for n, point1 in enumerate(points, 1):
 
-            tree.add(point)
+            tree.add(point1)
 
             self.assertTrue(tree.is_valid())
 
-            self.assertTrue(point in [node.data for node in tree.inorder()])
+            self.assertTrue(point1 in [node.data for node in tree.inorder()])
 
             nodes_in_tree = len(list(tree.inorder()))
             self.assertEqual(nodes_in_tree, n)
@@ -141,6 +143,14 @@ class TreeTraversals(unittest.TestCase):
 
         self.assertEqual(inorder_len, preorder_len)
         self.assertEqual(preorder_len, postorder_len)
+        
+    def test_level_node_unbalanced(self):
+        tree2=kdtree.create([ (1, 2), (2, 3) ])
+        node=tree2.search_nn((1.1,2.1))
+        node[0].add((1,1))
+        self.assertEqual(tree2.level(tree2), 0)
+        self.assertEqual(node[0].level(tree2), 1)
+        self.assertEqual(node[0].left.level(tree2), 2)
 
 
 
@@ -163,23 +173,23 @@ class NearestNeighbor(unittest.TestCase):
     def test_search_knn(self):
         points = [(50, 20), (51, 19), (1, 80)]
         tree = kdtree.create(points)
-        point = (48, 18)
+        point1 = (48, 18)
 
         all_dist = []
         for p in tree.inorder():
-            dist = p.dist(point)
+            dist = p.dist(point1)
             all_dist.append([p, dist])
 
         all_dist = sorted(all_dist, key = lambda n:n[1])
 
-        result = tree.search_knn(point, 1)
+        result = tree.search_knn(point1, 1)
         self.assertEqual(result[0][1], all_dist[0][1])
 
-        result = tree.search_knn(point, 2)
+        result = tree.search_knn(point1, 2)
         self.assertEqual(result[0][1], all_dist[0][1])
         self.assertEqual(result[1][1], all_dist[1][1])
 
-        result = tree.search_knn(point, 3)
+        result = tree.search_knn(point1, 3)
         self.assertEqual(result[0][1], all_dist[0][1])
         self.assertEqual(result[1][1], all_dist[1][1])
         self.assertEqual(result[2][1], all_dist[2][1])
@@ -187,21 +197,21 @@ class NearestNeighbor(unittest.TestCase):
     def test_search_nn(self, nodes=100):
         points = list(islice(random_points(), 0, nodes))
         tree = kdtree.create(points)
-        point = random_point()
+        point1 = random_point()
 
-        nn, dist = tree.search_nn(point)
-        best, best_dist = self.find_best(tree, point)
-        self.assertEqual(best_dist, dist, msg=', '.join(repr(p) for p in points) + ' / ' + repr(point))
+        nn, dist = tree.search_nn(point1)
+        best, best_dist = self.find_best(tree, point1)
+        self.assertEqual(best_dist, dist, msg=', '.join(repr(p) for p in points) + ' / ' + repr(point1))
 
 
     def test_search_nn2(self):
         points = [(1,2,3),(5,1,2),(9,3,4),(3,9,1),(4,8,3),(9,1,1),(5,0,0),
                   (1,1,1),(7,2,2),(5,9,1),(1,1,9),(9,8,7),(2,3,4),(4,5,4.01)]
         tree = kdtree.create(points)
-        point = (2,5,6)
+        point1 = (2,5,6)
 
-        nn, dist = tree.search_nn(point)
-        best, best_dist = self.find_best(tree, point)
+        nn, dist = tree.search_nn(point1)
+        best, best_dist = self.find_best(tree, point1)
         self.assertEqual(best_dist, dist)
 
 
@@ -229,19 +239,19 @@ class NearestNeighbor(unittest.TestCase):
       (99, 64, 55)]
 
         tree = kdtree.create(points)
-        point = (66, 54, 29)
+        point1 = (66, 54, 29)
 
-        nn, dist = tree.search_nn(point)
-        best, best_dist = self.find_best(tree, point)
+        nn, dist = tree.search_nn(point1)
+        best, best_dist = self.find_best(tree, point1)
         self.assertEqual(best_dist, dist)
 
 
 
-    def find_best(self, tree, point):
+    def find_best(self, tree, point1):
         best = None
         best_dist = None
         for p in tree.inorder():
-            dist = p.dist(point)
+            dist = p.dist(point1)
             if best is None or dist < best_dist:
                 best = p
                 best_dist = dist
@@ -255,7 +265,7 @@ class NearestNeighbor(unittest.TestCase):
         nn = tree.search_nn_dist((5,5), 2.5)
 
         self.assertEquals(len(nn), 4)
-        self.assertTrue( (6,6) in nn)
+        self.assertTrue( kdtree.KDNode(data=(6,6)) in nn)
         self.assertTrue( (5,5) in nn)
         self.assertTrue( (5,6) in nn)
         self.assertTrue( (6,5) in nn)
@@ -265,20 +275,20 @@ class NearestNeighbor(unittest.TestCase):
 
         for n in range(50):
             tree = random_tree()
-            point = random_point()
+            point1 = random_point()
             points = tree.inorder()
 
-            points = sorted(points, key=lambda p: p.dist(point))
+            points = sorted(points, key=lambda p: p.dist(point1))
 
             for p in points:
-                dist = p.dist(point)
-                nn = tree.search_nn_dist(point, dist)
+                dist = p.dist(point1)
+                nn = tree.search_nn_dist(point1, dist)
 
                 for pn in points:
                     if pn in nn:
-                        self.assertTrue(pn.dist(point) < dist, '%s in %s but %s < %s' % (pn, nn, pn.dist(point), dist))
+                        self.assertTrue(pn.dist(point1) < dist, '%s in %s but %s < %s' % (pn, nn, pn.dist(point1), dist))
                     else:
-                        self.assertTrue(pn.dist(point) >= dist, '%s not in %s but %s >= %s' % (pn, nn, pn.dist(point), dist))
+                        self.assertTrue(pn.dist(point1) >= dist, '%s not in %s but %s >= %s' % (pn, nn, pn.dist(point1), dist))
 
 
 class PointTypeTests(unittest.TestCase):
@@ -308,7 +318,240 @@ class PayloadTests(unittest.TestCase):
 
         for i, p in enumerate(points):
             self.assertEqual(i, tree.search_nn(p)[0].payload)
+            
+class SplitNodeTest(unittest.TestCase):
+#     def test_tree_size(self):
+#         listSplitPoints = []
+#         points = numpy.array([[0.0, 0.0],[0.0, 1.0], [ 1.0, 0.0], [1.0, 1.0]])
+#         util.splitN(points, 0,0,5, listSplitPoints)
+#         tree2dN = kdtree.createNewTree(listSplitPoints)
+#         kdtree.visualize(tree2dN)
+#         
+#         print "len: ", len(kdtree.level_order(tree2dN))
+        
+        
+    def test_splitNode(self):
+        ''' find the best matching node and split it, then find the best matching node again. 
+            Check if point lies in new generated node'''
+        print "---------- test splitNode --------"
+        #create tree with 2 levels
+        listSplitPoints = []
+        points = numpy.array([[0.0, 0.0],[0.0, 1.0], [ 1.0, 0.0], [1.0, 1.0]])
+        util.splitN(points, 0,0,5, listSplitPoints)
+        tree2dN = kdtree.createNewTree(listSplitPoints)
+        util.activate(tree2dN, 2)
+        
+        #points
+        point1 = [0.9,0.1]
+        point2 = [0.1,0.9]
+        
+        kdtree.visualize(tree2dN)
 
+        # split
+        print "found: ", tree2dN.get_path_to_best_matching_node(point1)[-1] 
+        tree2dN.get_path_to_best_matching_node(point1)[-1].activate_subnodes()
+        kdtree.visualize(tree2dN)
+        tree2dN.get_path_to_best_matching_node(point1)[-1].activate_subnodes()
+        kdtree.visualize(tree2dN)
+        print "data: ",  tree2dN.get_path_to_best_matching_node(point1)[-1].data
+        self.assertEqual( tree2dN.get_path_to_best_matching_node(point1)[-1].data, [0.875, 0.125], "wrong node")
+        
+        tree2dN.get_path_to_best_matching_node(point2)[-1].activate_subnodes()
+        tree2dN.get_path_to_best_matching_node(point2)[-1].activate_subnodes()
+        self.assertEqual( tree2dN.get_path_to_best_matching_node(point2)[-1].data, [0.125, 0.875], "wrong node")
+        del tree2dN
+        
+    def test_getNode(self):
+        print "---------- test getNode --------"
+        listSplitPoints = []
+        points = numpy.array([[0.0, 0.0],[0.0, 1.0], [ 1.0, 0.0], [1.0, 1.0]])
+        util.splitN(points, 0,0,6, listSplitPoints)
+        tree = kdtree.createNewTree(listSplitPoints)
+        util.activate(tree, 6)
+        kdtree.visualize(tree)
+        nodeLabel = 117
+        node = kdtree.getNode(tree, nodeLabel)
+        self.assertEqual( node.label, nodeLabel, "returned wrong node")
+        del tree
+
+
+class TreeCreationTest(unittest.TestCase):
+    def test_numberOfNodes(self):
+        highestlevel = 4
+        numberOfStates= 2**(highestlevel+2)-1
+        no1dN = []
+        points = numpy.array([[0.0, 0.0], [0.0, 1.0], [ 1.0, 0.0], [1.0, 1.0]])
+        util.splitN(points, 0, 0, highestlevel, no1dN)
+        tree = kdtree.createNewTree(no1dN)
+        self.assertEqual(tree.getHighestNodeId, numberOfStates, "created and expected number of states does not match")
+        
+        
+    def test_numberOfActiveStates(self):
+        """only temporary, active property will disapear in future"""
+        highestlevel = 4
+        numberOfStates= 2**(highestlevel+2)-1
+        no1dN = []
+        points = numpy.array([[0.0, 0.0], [0.0, 1.0], [ 1.0, 0.0], [1.0, 1.0]])
+        util.splitN(points, 0, 0, highestlevel, no1dN)
+        tree = kdtree.createNewTree(no1dN)
+
+        util.activate(tree, highestlevel+1)
+         
+        activeNodes = len([n for n in kdtree.level_order(tree) if n.active])
+        print "activeNodes: ", activeNodes, "       numberOfStates: ", numberOfStates
+        self.assertEqual(activeNodes, numberOfStates, "not the correct number of nodes active")
+        
+        
+        
+        
+#     def test_numberOfActiveNodes(self):
+#         highestlevel = 4
+#         numberOfStates= 2**(highestlevel+2) -1
+#         no1dN = []
+#         points = numpy.array([[0.0, 0.0], [0.0, 1.0], [ 1.0, 0.0], [1.0, 1.0]])
+#         util.splitN(points, 0, 0, highestlevel, no1dN)
+#         tree = kdtree.createNewTree(no1dN)
+#         self.assertEqual(tree.getHighestNodeId, numberOfStates, "created and expected number of states does not match")
+#         util.activate(tree, highestlevel+1)
+#         
+#         kdtree.visualize(tree)
+
+    
+    def test_createAndLableTree(self):
+        ''' Create new tree with new ids starting from 0'''
+        print "---------- test createAndLabelTree 1--------"
+        no1dN = []
+        points = numpy.array([[0.0, 0.0], [0.0, 1.0], [ 1.0, 0.0], [1.0, 1.0]])
+        util.splitN(points, 0, 0, 6, no1dN)
+        tree1 = kdtree.createNewTree(no1dN)
+        
+        label=0
+        for n in kdtree.level_order(tree1):
+            self.assertIsNotNone(kdtree.getNode(tree1, label), "1: node with label: "+ str(label) + " not found in tree")
+            label+=1
+        kdtree.visualize(tree1)   
+            
+        print "---------- test createAndLabelTree 2--------"
+        no2dN = []
+        points = numpy.array([[0.0, 0.01], [0.0, 1.0], [ 1.0, 0.0], [1.0, 1.0]])
+        util.splitN(points, 0, 0, 6, no2dN)
+        tree2 = kdtree.createNewTree(no2dN)
+        kdtree.visualize(tree2)  
+        
+        label=0
+        for n in kdtree.level_order(tree2):
+            self.assertIsNotNone(kdtree.getNode(tree2, label), "2: node with label: "+ str(label) + " not found in tree")
+            label+=1
+  
+        self.assertNotEqual(tree1, tree2, "trees have to be different")
+        
+class DisplayTreeTest(unittest.TestCase):
+    """ This test only works when the active=False"""
+    def test_showQ(self):
+        import matplotlib.pyplot as plt
+        import time
+          
+        print "---------- DisplayTreeTest ----------"
+        #plt.figure(self.fig_values.number)
+        maxLevel=2
+        no1dN = []
+        points = numpy.array([[0.0, 0.0], [0.0, 1.0], [ 1.0, 0.0], [1.0, 1.0]])
+        util.splitN(points, 0, 0, maxLevel, no1dN)
+        tree = kdtree.createNewTree(no1dN)
+          
+        numberOfStates= tree.getHighestNodeId
+        numberOfActions = 4
+        
+        kdtree.visualize(tree)
+        Q = numpy.ones((100,numberOfActions))
+        
+        n = tree.get_path_to_best_matching_node([0.75, 0.75])[-1]
+        print n.label
+        n.split2([0.85, 0.75], axis=0, sel_axis = (lambda axis: axis))
+        kdtree.visualize(tree)  
+        # only leaves are shown!
+        # States are positioned like in the tree i.e. xy axes splits in tree represent xy position in coord system
+        # 0, 0 is bottom left, x increases to the right 
+        # action 0 is to the left
+        # Q[State][action]
+        Q[3][0] = 0 # bottom left, action left
+#         Q[5][1] = 0.1 # above Q[2] (in y direction), right
+#         Q[58][2] = 0.1 #right top corner, down
+#         Q[4][0] = 0.5
+        kdtree.plotQ2D(tree, min_coord=[0, 0], max_coord=[1, 1],Values = Q, plt=plt, plot="Q")
+        time.sleep(5)  
+          
+        
+
+        
+        
+        
+# class DisplayTreeTest(unittest.TestCase):
+#     """ This test only works when the active=False"""
+#     def test_showQ(self):
+#         import matplotlib.pyplot as plt
+#         import time
+#          
+#         print "---------- DisplayTreeTest ----------"
+#         #plt.figure(self.fig_values.number)
+#         plt.title("Values")
+#         maxLevel=4
+#         no1dN = []
+#         points = numpy.array([[0.0, 0.0], [0.0, 1.0], [ 1.0, 0.0], [1.0, 1.0]])
+#         util.splitN(points, 0, 0, maxLevel, no1dN)
+#         tree = kdtree.createNewTree(no1dN)
+#          
+#         numberOfStates= tree.getHighestNodeId
+#         numberOfActions = 4
+#          
+#         util.activate(tree, maxLevel)
+#         kdtree.visualize(tree)
+#         Q = numpy.ones((numberOfStates,numberOfActions))
+#          
+#         # only leaves are shown!
+#         # States are positioned like in the tree i.e. xy axes splits in tree represent xy position in coord system
+#         # 0, 0 is bottom left, x increases to the right 
+#         # action 0 is to the left
+#         # Q[State][action]
+#         Q[2][0] = 0 # bottom left, action left
+#         Q[5][1] = 0.1 # above Q[2] (in y direction), right
+#         Q[58][2] = 0.1 #right top corner, down
+# #         Q[4][0] = 0.5
+#         kdtree.plotQ2D(tree, min_coord=[0, 0], max_coord=[1, 1],Values = Q, plt=plt, plot="Q")
+#         time.sleep(5)  
+    
+    
+#     def test_showQ(self):
+#         import matplotlib.pyplot as plt
+#         import time
+#          
+#         print "---------- DisplayTreeTest ----------"
+#         #plt.figure(self.fig_values.number)
+#         plt.title("Values")
+#         levels=4
+#         numberOfStates= 2**(levels+1)
+#         numberOfActions = 4
+#         no1dN = []
+#         points = numpy.array([[0.0, 0.0], [0.0, 1.0], [ 1.0, 0.0], [1.0, 1.0]])
+#         util.splitN(points, 0, 0, levels, no1dN)
+#         tree = kdtree.createNewTree(no1dN)
+#         kdtree.visualize(tree)
+#         util.activate(tree, levels)
+#         Q = numpy.ones((numberOfStates,numberOfActions))
+#          
+#         # only leaves are shown!
+#         # States are positioned like in the tree i.e. xy axes splits in tree represent xy position in coord system
+#         # 0, 0 is bottom left, x increases to the right 
+#         # action 0 is to the left
+#         # Q[State][action]
+#         Q[0][0] = 0 # bottom left, action left
+#         Q[1][1] = 0.1 # above Q[0] (in y direction), right
+#         Q[26][2] = 0.1 #right top corner, down
+# #         Q[3][0] = 0.3
+# #         Q[4][0] = 0.5
+#         kdtree.plotQ2D(tree, min_coord=[0, 0], max_coord=[1, 1],Values = Q, plt=plt, plot="Q")
+#         time.sleep(2)      
+        
 
 def random_tree(nodes=20, dimensions=3, minval=0, maxval=100):
     points = list(islice(random_points(), 0, nodes))
